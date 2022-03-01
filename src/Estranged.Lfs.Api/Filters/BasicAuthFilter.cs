@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using System.Threading;
+using static Estranged.Lfs.Api.HeaderDictionaryExtensions;
 
 namespace Estranged.Lfs.Api.Filters
 {
@@ -30,35 +31,6 @@ namespace Estranged.Lfs.Api.Filters
             context.Result = new StatusCodeResult(401);
         }
 
-        private (string Username, string Password) GetCredentials(IHeaderDictionary headers)
-        {
-            if (!headers.ContainsKey(AuthorizationHeader))
-            {
-                throw new InvalidOperationException("No Authorization header found.");
-            }
-
-            string[] authValues = headers[AuthorizationHeader].ToArray();
-            if (authValues.Length != 1)
-            {
-                throw new InvalidOperationException("More than one Authorization header found.");
-            }
-
-            string auth = authValues.Single();
-            if (!auth.StartsWith(BasicPrefix))
-            {
-                throw new InvalidOperationException("Authorization header is not Basic.");
-            }
-
-            auth = auth.Substring(BasicPrefix.Length).Trim();
-
-            byte[] decoded = Convert.FromBase64String(auth);
-            Encoding iso = Encoding.GetEncoding("ISO-8859-1");
-
-            string[] authPair = iso.GetString(decoded).Split(':');
-
-            return (authPair[0], authPair[1]);
-        }
-
         private LfsPermission GetRequiredPermission(HttpRequest request) => request.Method.ToUpper() == "GET" ? LfsPermission.Read : LfsPermission.Write;
 
         public async Task OnActionExecutionAsync(ActionExecutingContext context, ActionExecutionDelegate next)
@@ -67,7 +39,7 @@ namespace Estranged.Lfs.Api.Filters
             string password;
             try
             {
-                (username, password) = GetCredentials(context.HttpContext.Request.Headers);
+                (username, password) = context.HttpContext.Request.Headers.GetGitCredentials();
             }
             catch (Exception e)
             {

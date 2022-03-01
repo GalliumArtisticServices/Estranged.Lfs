@@ -1,5 +1,6 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 using System.Collections.Generic;
+using Estranged.Lfs.Lock;
 
 namespace Estranged.Lfs.Data
 {

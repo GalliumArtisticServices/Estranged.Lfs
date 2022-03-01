@@ -8,6 +8,7 @@ using Estranged.Lfs.Api;
 using Estranged.Lfs.Authenticator.BitBucket;
 using Estranged.Lfs.Authenticator.GitHub;
 using Estranged.Lfs.Data;
+using Estranged.Lfs.Lock.DynamoDB;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -29,6 +30,8 @@ namespace Estranged.Lfs.Hosting.Lambda
             const string S3AccelerationVariable = "S3_ACCELERATION";
             const string LfsAzureStorageConnectionStringVariable = "LFS_AZUREBLOB_CONNECTIONSTRING";
             const string LfsAzureStorageContainerNameVariable = "LFS_AZUREBLOB_CONTAINERNAME";
+            const string LfsLockTableNameVariable = "LFS_LOCK_TABLE_NAME";
+            const string LfsDistributedLockTableNameVariable = "LFS_DISTRIBUTED_LOCK_TABLE_NAME";
 
             var config = new ConfigurationBuilder()
                 .AddEnvironmentVariables()
@@ -42,6 +45,8 @@ namespace Estranged.Lfs.Hosting.Lambda
             string gitHubRepository = config[GitHubRepositoryVariable];
             string bitBucketWorkspace = config[BitBucketWorkspaceVariable];
             string bitBucketRepository = config[BitBucketRepositoryVariable];
+            string lfsLockTableName = config[LfsLockTableNameVariable];
+            string lfsDistributedLockTableName = config[LfsDistributedLockTableNameVariable];
             bool s3Acceleration = bool.Parse(config[S3AccelerationVariable] ?? "false");
 
             bool isS3Storage = !string.IsNullOrWhiteSpace(lfsBucket);
@@ -49,6 +54,7 @@ namespace Estranged.Lfs.Hosting.Lambda
             bool isDictionaryAuthentication = !string.IsNullOrWhiteSpace(lfsUsername) && !string.IsNullOrWhiteSpace(lfsPassword);
             bool isGitHubAuthentication = !string.IsNullOrWhiteSpace(gitHubOrganisation) && !string.IsNullOrWhiteSpace(gitHubRepository);
             bool isBitBucketAuthentication = !string.IsNullOrWhiteSpace(bitBucketWorkspace) && !string.IsNullOrWhiteSpace(bitBucketRepository);
+            bool isLfsLocks = !string.IsNullOrWhiteSpace(lfsLockTableName) && !string.IsNullOrWhiteSpace(lfsDistributedLockTableName);
 
             // If all authentication mechanims are set, or none are set throw an error
             if (new[] {isDictionaryAuthentication, isGitHubAuthentication, isBitBucketAuthentication}.Count(x => x) != 1)
@@ -87,6 +93,11 @@ namespace Estranged.Lfs.Hosting.Lambda
             else
             {
                 throw new InvalidOperationException($"Missing environment variable {LfsBucketVariable} or {LfsAzureStorageConnectionStringVariable}.");
+            }
+
+            if (isLfsLocks)
+            {
+                services.AddLfsDynamoDBLocK(new Amazon.DynamoDBv2.AmazonDynamoDBClient(), lfsLockTableName, lfsDistributedLockTableName);
             }
 
             services.AddLfsApi();
