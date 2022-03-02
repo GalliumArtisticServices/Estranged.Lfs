@@ -35,8 +35,14 @@ namespace Estranged.Lfs.Lock.DynamoDB
             distributedManager = new DynamoDbLockManager(client, distributedLockTableName, NullLoggerFactory.Instance);
             dynamoClient = client;
             this.lockTableName = lockTableName;
+            Start();
         }
 
+        // ToDO: Figure out initialization in this version of ASP.Net or upgrade
+        private async void Start()
+        {
+            await StartAsync();
+        }
         public async Task StartAsync()
         {
             if (Started == true)
